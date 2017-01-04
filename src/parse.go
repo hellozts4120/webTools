@@ -10,26 +10,22 @@ import (
 // opaque = authority/path
 // authority = userinfo@host:port
 type URL struct {
-	Input string
+	Input     string
 
-	Scheme   string
-	Opaque   string
-	Query    string
-	Fragment string
+	Scheme    string
+	Opaque    string
+	Query     string
+	Fragment  string
 
 	// Elements of Opaque
 	Authority string
 	Path      string
 
 	// Elements of Authority
-	UserInfo string
-	Host     string
-	Port     string
+	UserInfo  string
+	Host      string
+	Port      string
 }
-
-// RFC3986: https://www.ietf.org/rfc/rfc3986.txt
-// URI scheme registry: http://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml
-// TODO: Normalize method; See RFC3986 section 6.2.2 for normalization ref
 
 func namedMatches(matches []string, r *regexp.Regexp) map[string]string {
 	result := make(map[string]string)
@@ -46,13 +42,13 @@ func namedMatches(matches []string, r *regexp.Regexp) map[string]string {
 	return result
 }
 
-func splitAuthorityFromPath(opaque string) (string, string) {
+func splitPath(opaque string) (string, string) {
 	r := regexp.MustCompile("((//)?(?P<authority>[^/]+))?(?P<path>/.*)?")
 	matches := namedMatches(r.FindStringSubmatch(opaque), r)
 	return matches["authority"], matches["path"]
 }
 
-func splitUserinfoHostPortFromAuthority(authority string) (string, string, string) {
+func splitAuthority(authority string) (string, string, string) {
 	userinfo := ""
 	if delimPos := strings.LastIndex(authority, "@"); delimPos != -1 {
 		userinfo = authority[0:delimPos]
@@ -73,10 +69,9 @@ func splitUserinfoHostPortFromAuthority(authority string) (string, string, strin
 	return userinfo, matches["host"], matches["port"]
 }
 
-// Split splits an URL in to its main components (scheme, opaque, query, fragment)
 func splitMainPart(url string) (string, string, string, string) {
 	parts := []string{
-		"^((?P<scheme>[^:\\.]+):)?", // scheme is required by RFC3986 (S3) but we are intentionally allowing it to be omitted for convenience
+		"^((?P<scheme>[^:\\.]+):)?", // scheme
 		"(?P<opaque>(//)?[^?#]+)",   // opaque-part
 		"(\\?(?P<query>[^#]+))?",    // query
 		"(#(?P<fragment>.*))?",      // fragment
@@ -88,6 +83,16 @@ func splitMainPart(url string) (string, string, string, string) {
 	return matches["scheme"], matches["opaque"], matches["query"], matches["fragment"]
 }
 
+// default using http path
+func setDefaultPath(path string) (string) {
+	if path != "" {
+		return path
+	}
+
+	return "/"
+}
+
+// http default port 80, https default port 443
 func setDefaultPort(port string, scheme string) (string) {
 	if port != "" {
 		return port
@@ -103,13 +108,24 @@ func setDefaultPort(port string, scheme string) (string) {
 	return port
 }
 
+// default using http scheme
+func setDefaultScheme(scheme string) (string) {
+	if scheme != "" {
+		return scheme
+	}
+
+	return "http"
+}
+
 // Parse splits an URL in to as many parts as it can
 func Parse(url string) *URL {
 	result := &URL{}
 	result.Input = url
 	result.Scheme, result.Opaque, result.Query, result.Fragment = splitMainPart(url)
-	result.Authority, result.Path = splitAuthorityFromPath(result.Opaque)
-	result.UserInfo, result.Host, result.Port = splitUserinfoHostPortFromAuthority(result.Authority)
+	result.Authority, result.Path = splitPath(result.Opaque)
+	result.UserInfo, result.Host, result.Port = splitAuthority(result.Authority)
+	result.Path = setDefaultPath(result.Path)
+	result.Scheme = setDefaultScheme(result.Scheme)
 	result.Port = setDefaultPort(result.Port, result.Scheme)
 	return result
 }

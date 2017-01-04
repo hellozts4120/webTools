@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 )
 
@@ -22,23 +21,13 @@ func readURL() {
 
 	rawURL := os.Args[1]
 
-	fmt.Println(rawURL)
+	// get parsed-url
 	u := Parse(rawURL)
-	fmt.Println(u.Scheme)
-    fmt.Println(u.UserInfo)
 
-    fmt.Println(u.Host)
-    fmt.Println(u.Port)
-    fmt.Println(u.Fragment)
-    fmt.Println(u.Authority)
-    fmt.Println(u.Path)
+	// make the dns-query
+	hostIP := SendDNSQuery(u.Host, "202.120.224.26:53")
+	os.Stderr.WriteString(hostIP)
 
-	if u.Scheme == "http" {
-
-	} else if u.Scheme == "https" {
-
-	} else {
-		os.Stderr.WriteString("Error: Unknown Scheme!\n")
-		os.Exit(-1)
-	}
+	// send request
+	sendRequest(u, hostIP, "")
 }
